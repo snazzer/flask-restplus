@@ -24,6 +24,7 @@ jobs:
             inv test
             tox -e py36,py27 # call tox manually to just check certain versions
             inv assets
+            inv doc
       - run:
           name: Ensure new version (merged version must not exist in S3)
           command: |
