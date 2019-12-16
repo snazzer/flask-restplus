@@ -2,7 +2,7 @@ version: 2
 jobs:
   test:
     docker:
-      - image: circleci/python:3.6.7
+      - image: circleci/python:3.6.7-node
     steps:
       - checkout
       - run:
@@ -31,7 +31,7 @@ jobs:
 
   deploy-to-s3:
     docker:
-      - image: circleci/python:3.6.7
+      - image: circleci/python:3.6.7-node
     steps:
       - checkout
       - run:
