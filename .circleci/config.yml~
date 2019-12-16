@@ -1,0 +1,71 @@
+version: 2
+jobs:
+  test:
+    docker:
+      - image: circleci/python:3.6.7
+    steps:
+      - checkout
+      - run:
+          name: Install aws cli
+          command: pip3 install awscli --upgrade --user
+      - run:
+          name: Establish secure tunnel
+          command: |
+            SSH_PARAMS="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ServerAliveInterval=10"
+            sudo -E ssh $SSH_PARAMS -f -N -L 443:python.internal.integrateai.net:443 ansible@ansible.integrateai.net
+            sudo bash -c "echo '127.0.0.1 python.internal.integrateai.net' >> /etc/hosts"
+      - run:
+          name: Install dependencies
+          command: |
+          python3 -m venv venv
+          source ./venv/bin/activate
+          pip install -e .[dev]
+      - run:
+          name: Run tests
+          command: |
+          source ./venv/bin/activate
+          inv qa
+          inv test
+          inv tox
+      - run:
+          name: Ensure new version (merged version must not exist in S3)
+          command: |
+            export VERSION=$(pipenv run python setup.py --version)
+            ! ~/.local/bin/aws s3 ls s3://deployment.integrate.ai/python/flask-restplus/flask-restplus-${VERSION}.tar.gz
+
+  deploy-to-s3:
+    docker:
+      - image: circleci/python:3.6.7
+    steps:
+      - checkout
+      - run:
+          name: Install aws cli
+          command: pip3 install awscli --upgrade --user
+      - run:
+          name: Build Source Distribution
+          command: |
+          python3 -m venv venv
+          source ./venv/bin/activate
+          pip install -e .[dev]
+          inv dist
+      - run:
+          name: Ensure new version (merged version must not exist in S3)
+          command: |
+            export VERSION=$(pipenv run python setup.py --version)
+            ! ~/.local/bin/aws s3 ls s3://deployment.integrate.ai/python/flask-restplus/flask-restplus-${VERSION}.tar.gz
+      - run:
+          name: Copy to S3
+          command: |
+            ~/.local/bin/aws s3 cp ~/project/dist/iai-vault-*.tar.gz s3://deployment.integrate.ai/python/iai-vault/
+
+workflows:
+  version: 2
+  test-and-deploy:
+    jobs:
+      - test
+      - deploy-to-s3:
+          requires:
+            - test
+          filters:
+            branches:
+              only: master
