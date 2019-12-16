@@ -26,14 +26,12 @@ jobs:
           source ./venv/bin/activate
           inv qa
           inv test
-          tox -e py36,py27 # call tox manually to just check certain versions
-          inv assets
-          inv doc
+          inv tox
       - run:
           name: Ensure new version (merged version must not exist in S3)
           command: |
-            export VERSION=$(./venv/bin/python setup.py --version)
-            ! ~/.local/bin/aws s3 ls s3://deployment.integrate.ai/python/flask-restplus/flask_restplus-${VERSION}-py2.py3-none-any.whl
+            export VERSION=$(pipenv run python setup.py --version)
+            ! ~/.local/bin/aws s3 ls s3://deployment.integrate.ai/python/flask-restplus/flask-restplus-${VERSION}.tar.gz
 
   deploy-to-s3:
     docker:
@@ -48,19 +46,17 @@ jobs:
           command: |
           python3 -m venv venv
           source ./venv/bin/activate
-          pip install -U pip
-          pip install -U setuptools
+          pip install -e .[dev]
           inv dist
       - run:
           name: Ensure new version (merged version must not exist in S3)
           command: |
-            export VERSION=$(./venv/bin/python setup.py --version)
-            ! ~/.local/bin/aws s3 ls s3://deployment.integrate.ai/python/flask-restplus/flask_restplus-${VERSION}-py2.py3-none-any.whl
+            export VERSION=$(pipenv run python setup.py --version)
+            ! ~/.local/bin/aws s3 ls s3://deployment.integrate.ai/python/flask-restplus/flask-restplus-${VERSION}.tar.gz
       - run:
           name: Copy to S3
           command: |
-            export VERSION=$(./venv/bin/python setup.py --version)
-            ~/.local/bin/aws s3 cp ~/project/dist/flask_restplus-${VERSION}-py2.py3-none-any.whl s3://deployment.integrate.ai/python/flask-restplus/
+            ~/.local/bin/aws s3 cp ~/project/dist/iai-vault-*.tar.gz s3://deployment.integrate.ai/python/iai-vault/
 
 workflows:
   version: 2
