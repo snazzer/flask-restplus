@@ -9,12 +9,6 @@ jobs:
           name: Install aws cli
           command: pip3 install awscli --upgrade --user
       - run:
-          name: Establish secure tunnel
-          command: |
-            SSH_PARAMS="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ServerAliveInterval=10"
-            sudo -E ssh $SSH_PARAMS -f -N -L 443:python.internal.integrateai.net:443 ansible@ansible.integrateai.net
-            sudo bash -c "echo '127.0.0.1 python.internal.integrateai.net' >> /etc/hosts"
-      - run:
           name: Install dependencies
           command: |
             python3 -m venv venv
