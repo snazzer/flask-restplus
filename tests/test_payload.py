@@ -378,7 +378,10 @@ class PayloadTest(object):
         response = client.post('/test', data='{}',
                                headers={'content-type': 'application/json'})
         assert response.status_code == 400
-        assert "'name' is a required property" == response.get_json()['errors']['name']
+
+        # Note that there is a bug in py2.7 where the unicode indicator is also
+        # output. E.g. {u'name': u"u'name' is a required property"}
+        assert "'name' is a required property" in response.get_json()['errors']['name']
 
         # Expect exception from decorator, not exception from validation
         do_raise = True
