@@ -1,16 +1,70 @@
 version: 2
 jobs:
-  build:
+  test:
     docker:
-      - image: debian:stretch
-
+      - image: circleci/python:3.6.7-node
     steps:
       - checkout
-
       - run:
-          name: Greeting
-          command: echo Hello, world.
-
+          name: Install aws cli
+          command: pip3 install awscli --upgrade --user
       - run:
-          name: Print the Current Time
-          command: date
+          name: Install dependencies
+          command: |
+            python3 -m venv venv
+            source ./venv/bin/activate
+            pip install -e .[dev]
+            pip install -U pip
+            pip install -U setuptools
+      - run:
+          name: Run tests
+          command: |
+            source ./venv/bin/activate
+            inv qa
+            inv test
+            tox -e py36,py27 # call tox manually to just check certain versions
+            inv assets
+      - run:
+          name: Ensure new version (merged version must not exist in S3)
+          command: |
+            export VERSION=$(./venv/bin/python setup.py --version)
+            ! ~/.local/bin/aws s3 ls s3://deployment.integrate.ai/python/flask-restplus/flask_restplus-${VERSION}-py2.py3-none-any.whl
+
+  deploy-to-s3:
+    docker:
+      - image: circleci/python:3.6.7-node
+    steps:
+      - checkout
+      - run:
+          name: Install aws cli
+          command: pip3 install awscli --upgrade --user
+      - run:
+          name: Build Source Distribution
+          command: |
+            python3 -m venv venv
+            source ./venv/bin/activate
+            pip install -U pip
+            pip install -U setuptools
+            inv dist
+      - run:
+          name: Ensure new version (merged version must not exist in S3)
+          command: |
+            export VERSION=$(./venv/bin/python setup.py --version)
+            ! ~/.local/bin/aws s3 ls s3://deployment.integrate.ai/python/flask-restplus/flask_restplus-${VERSION}-py2.py3-none-any.whl
+      - run:
+          name: Copy to S3
+          command: |
+            export VERSION=$(./venv/bin/python setup.py --version)
+            ~/.local/bin/aws s3 cp ~/project/dist/flask_restplus-${VERSION}-py2.py3-none-any.whl s3://deployment.integrate.ai/python/flask-restplus/
+
+workflows:
+  version: 2
+  test-and-deploy:
+    jobs:
+      - test
+      - deploy-to-s3:
+          requires:
+            - test
+          filters:
+            branches:
+              only: master
