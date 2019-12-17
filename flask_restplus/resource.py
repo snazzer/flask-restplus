@@ -4,6 +4,7 @@ from __future__ import unicode_literals
 from flask import request
 from flask.views import MethodView
 from werkzeug.wrappers import BaseResponse
+from functools import wraps
 
 from .model import ModelBase
 
@@ -36,10 +37,16 @@ class Resource(MethodView):
             meth = getattr(self, 'get', None)
         assert meth is not None, 'Unimplemented method %r' % request.method
 
+        def defer_validate_payload(f):
+            @wraps(f)
+            def do_validate_payload(*args, **kwds):
+                self.validate_payload(meth)
+                return f(*args, **kwds)
+            return do_validate_payload
+
+        meth = defer_validate_payload(meth)
         for decorator in self.method_decorators:
             meth = decorator(meth)
-
-        self.validate_payload(meth)
 
         resp = meth(*args, **kwargs)
 
