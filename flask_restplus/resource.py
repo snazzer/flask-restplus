@@ -36,13 +36,15 @@ class Resource(MethodView):
             meth = getattr(self, 'get', None)
         assert meth is not None, 'Unimplemented method %r' % request.method
 
-        def defer_validate_payload(f):
-            def do_validate_payload(*args, **kwds):
-                self.validate_payload(meth)
-                return f(*args, **kwds)
-            return do_validate_payload
+        def defer_validate_payload():
+            def wrapper(f):
+                def do_validate_payload(*args, **kwds):
+                    self.validate_payload(f)
+                    return f(*args, **kwds)
+                return do_validate_payload
+            return wrapper
 
-        meth = defer_validate_payload(meth)
+        meth = defer_validate_payload()(meth)
         for decorator in self.method_decorators:
             meth = decorator(meth)
 
