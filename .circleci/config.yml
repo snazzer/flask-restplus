@@ -46,6 +46,7 @@ jobs:
             pip install -U pip
             pip install -U setuptools
             pip install -e .[dev]
+            pip install wheel
             inv dist
       - run:
           name: Ensure new version (merged version must not exist in S3)
