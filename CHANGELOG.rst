@@ -10,6 +10,7 @@ Current
 - Import the ABCs from 'collections.abc' instead of 'collections' by default as it is deprecated since Python3.7, and in 3.8 it will stop working. Python2.7 is still supported though.
 - Fix illegal characters in JSON references to model names (:issue:`651`)
 - Support ``envelope`` parameter in Swagger documentation (:pr:`390`)
+- Fixing issue where method_decorators are after validation, which interferes with decorators intended for authorization.
 
 0.13.0 (2019-08-12)
 -------------------

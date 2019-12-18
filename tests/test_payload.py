@@ -2,6 +2,7 @@
 from __future__ import unicode_literals
 
 import flask_restplus as restplus
+from functools import wraps
 
 
 class PayloadTest(object):
@@ -341,3 +342,50 @@ class PayloadTest(object):
                                headers={'content-type': 'application/json'})
 
         assert response.status_code == 200
+
+    def test_decorators_before_expect(self, app, client):
+        do_raise = False
+
+        def test_decorator(f):
+            @wraps(f)
+            def execute(*args, **kwds):
+                if do_raise:
+                    raise ValueError('Raising test exception')
+                return f(*args, **kwds)
+            return execute
+
+        api = restplus.Api(app)
+
+        fields = api.model('Person', {
+            'name': restplus.fields.String(required=True),
+        })
+
+        @api.route('/test')
+        class TestResource(restplus.Resource):
+            method_decorators = [
+                test_decorator
+            ]
+
+            @api.expect(fields, validate=True)
+            def post(self):
+                return 'ok', 200
+
+        @api.errorhandler(ValueError)
+        def handle_error(error):
+            return {'message': str(error)}, 500
+
+        # Expect validation if no exception from decorator
+        response = client.post('/test', data='{}',
+                               headers={'content-type': 'application/json'})
+        assert response.status_code == 400
+
+        # Note that there is a bug in py2.7 where the unicode indicator is also
+        # output. E.g. {u'name': u"u'name' is a required property"}
+        assert "'name' is a required property" in response.get_json()['errors']['name']
+
+        # Expect exception from decorator, not exception from validation
+        do_raise = True
+        response = client.post('/test', data='{}',
+                               headers={'content-type': 'application/json'})
+        assert response.status_code == 500
+        assert response.get_json()['message'] == 'Raising test exception'
