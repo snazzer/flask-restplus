@@ -22,7 +22,7 @@ jobs:
             source ./venv/bin/activate
             inv qa
             inv test
-            tox -e py36,py27 # call tox manually to just check certain versions
+            inv tox
             inv assets
       - run:
           name: Ensure new version (merged version must not exist in S3)
@@ -47,7 +47,7 @@ jobs:
             pip install -U setuptools
             pip install -e .[dev]
             pip install wheel
-            inv dist
+            inv all  # will also run tests
       - run:
           name: Ensure new version (merged version must not exist in S3)
           command: |
@@ -65,8 +65,6 @@ workflows:
     jobs:
       - test
       - deploy-to-s3:
-          requires:
-            - test
           filters:
             branches:
               only: master
